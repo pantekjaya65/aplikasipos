@@ -30,6 +30,10 @@ export default function Pos() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [bayar, setBayar] = useState<string>('0');
 
+  const [metodeModalVisible, setMetodeModalVisible] = useState(false);
+  const [selectedMetode, setSelectedMetode] = useState<string | null>(null);
+  const [showTransferInfo, setShowTransferInfo] = useState(false);
+
   const fetchBarangs = async () => {
     try {
       const res = await fetch('https://jokiku.codepena.cloud/api/barang');
@@ -165,7 +169,6 @@ export default function Pos() {
 
           <View style={styles.summary}>
             <Text style={styles.summaryText}>Subtotal: Rp {subtotal.toLocaleString()}</Text>
-            <Text></Text>
             <Text style={styles.summaryText}>Masukkan Jumlah Uang Cash</Text>
             <TextInput
               style={styles.input}
@@ -175,10 +178,63 @@ export default function Pos() {
               value={bayar}
               onChangeText={setBayar}
             />
-            <TouchableOpacity onPress={processPayment} style={styles.payBtn}>
+            <TouchableOpacity onPress={() => setMetodeModalVisible(true)} style={styles.payBtn}>
               <Text style={styles.payBtnText}>Bayar</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Modal Pilihan Metode Pembayaran */}
+          {metodeModalVisible && (
+            <View style={styles.modalOverlay}>
+              <View style={styles.modal}>
+                <Text style={styles.modalTitle}>Pilih Metode Pembayaran</Text>
+                {['Cash', 'Transfer BRI', 'Transfer BCA', 'Transfer BNI'].map(metode => (
+                  <TouchableOpacity
+                    key={metode}
+                    style={styles.modalBtn}
+                    onPress={() => {
+                      setSelectedMetode(metode);
+                      setMetodeModalVisible(false);
+                      if (metode === 'Cash') {
+                        processPayment();
+                      } else {
+                        setShowTransferInfo(true);
+                      }
+                    }}
+                  >
+                    <Text style={styles.modalBtnText}>{metode}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Modal Info Transfer */}
+          {showTransferInfo && (
+            <View style={styles.modalOverlay}>
+              <View style={styles.modal}>
+                <Text style={styles.modalTitle}>Pembayaran Transfer</Text>
+                <Text style={styles.modalInfo}>Bank: {selectedMetode?.replace('Transfer ', '')}</Text>
+                <Text style={styles.modalInfo}>Total: Rp {subtotal.toLocaleString()}</Text>
+                <Text style={styles.modalInfo}>Kode Pembayaran: TRX-{Date.now().toString().slice(-6)}</Text>
+                <Text style={styles.modalInfo}>Barang:</Text>
+                {cart.map(i => (
+                  <Text key={i.id_barang} style={styles.modalItem}>• {i.nama_barang} x{i.qty}</Text>
+                ))}
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowTransferInfo(false);
+                    Alert.alert('Silakan Transfer', `Gunakan kode di atas untuk referensi pembayaran.`);
+                    setCart([]);
+                    setBayar('0');
+                  }}
+                  style={styles.modalBtn}
+                >
+                  <Text style={styles.modalBtnText}>Selesai</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -211,4 +267,17 @@ const styles = StyleSheet.create({
   },
   payBtnText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
   emptyCart: { color: '#777', fontStyle: 'italic' },
+
+  modalOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center'
+  },
+  modal: {
+    backgroundColor: '#222', padding: 20, borderRadius: 12, width: '80%',
+  },
+  modalTitle: { color: '#fff', fontSize: 18, marginBottom: 12, fontWeight: 'bold' },
+  modalBtn: { backgroundColor: '#4c669f', padding: 12, borderRadius: 6, marginTop: 8 },
+  modalBtnText: { color: '#fff', textAlign: 'center', fontWeight: 'bold' },
+  modalInfo: { color: '#fff', marginVertical: 4 },
+  modalItem: { color: '#ccc', marginLeft: 8 }
 });
